@@ -1,0 +1,91 @@
+#!/usr/bin/python
+
+# TODO:
+#   * allow the user to specify the location of john
+
+import fileinput
+import os
+import subprocess
+import time
+import shlex
+import multiprocessing
+import errno
+
+
+def thread(pw,user_count,thread_count):
+    print "user_count =", user_count
+    john_path = '/home/jdellaire/john-the-ripper%d/run/john' %thread_count
+    file_name = '/tmp/pw%d' % user_count
+    process_name = shlex.split(john_path + ' ' + file_name)
+    new_file = open(file_name, 'w')
+    new_file.write('user%d' % user_count + ":" + pw)
+    new_file.close()
+    proc = subprocess.Popen(process_name)
+    proc.wait()
+    os.remove(file_name)
+
+
+def check_pid(pid):
+    count = 0
+    try:
+        os.kill(pid,0)
+    except OSError:
+        count += 1
+
+data = {}
+max_thread = 8
+thread_count = 0
+user_count = 0
+pid_arr = []
+
+
+# Build dictionary of passwords and users
+for line in fileinput.input():
+    line = line.rstrip(os.linesep)
+    username, password = line.split(':')
+    if password not in data.keys():
+        data[password] = {'usernames': []}
+    data[password]['usernames'].append(username)
+
+#print data
+#print "data.keys(0 =", data.keys()
+#print "data.values() =", data.values()
+#print "data.values()[0] =", data.values()[0]
+#print "data.values()[0]['usernames'] =", data.values()[0]['usernames']
+#print "data.values()[0]['usernames'][0] =", data.values()[0]['usernames'][0]
+#print "data.keys()[0] =", data.keys()[0]
+
+#for name in data.values():
+#    print name['usernames'][0]
+
+
+pw_count = len(data)
+
+while (user_count < pw_count):
+    if thread_count <= 8:
+        thread_count += 1
+        user_count += 1
+        pid = os.fork()
+        #child process
+        if pid > 0:
+            thread(data.keys()[user_count-1],user_count,thread_count)
+            os.waitpid(pid,0)
+            os._exit(0)
+        if thread_count == 8:
+
+
+#result_file = open('/tmp/john_test', 'w')
+#for password in data.keys():
+#    print password
+#    result_file.write(password + "\n")
+
+#result_file.close()
+
+#    proc = subprocess.Popen(['cat', '> /tmp/john_test'], stdin=subprocess.PIPE)
+#    send = proc.communicate(input=password + "\n")
+#    print "send data:",send
+#    proc = subprocess.Popen(["/home/jdellaire/test.sh" "--stdin" "--single-mode" "--fork=16"], stdin=subprocess.PIPE)
+#    #proc.stdin.write(password)
+#    #proc.stdin.close()
+#    yarp = proc.communicate(password)
+#    print yarp
