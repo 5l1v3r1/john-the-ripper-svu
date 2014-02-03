@@ -59,7 +59,11 @@ def check_single_pid(pid):
 def timer(pid):
     start_time = time.time()
     while check_single_pid(pid):
-        pass
+        ctime = time.time() - start_time
+        if (ctime > 10):
+            print "Process %d is > 10 seconds.  Exiting.." %pid
+            os.kill(pid,signal.SIGKILL)
+            break
     end_time = time.time()
 
     return (end_time - start_time)
